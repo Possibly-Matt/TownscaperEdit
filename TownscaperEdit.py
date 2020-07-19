@@ -7,34 +7,36 @@
 # %user\AppData\LocalLow\Oskar Stalberg\Townscaper
 
 # Version History
+# 1.2 2020-07-19 moved loading code into a function, added a menu system and a save location "picker"
+#
 # 1.1 2020-07-18 added filllayer(), default for save()
 # 
 # 1.0 2020-07-15 initial release
 # included level load, save(), and functions levelcolor(), randcolor()
 # buildoffset(), killrand(), hkill(),and hcull()
+#
 
+
+
+import os
+from random import choice
+from random import random
+
+global infiletemplate
 infiletemplate = "Town{}.scape"
+
+global ALLCOLORS
 ALLCOLORS = [i for i in range(15)]
+
 filedata = ""
+
+
+
+global lev_num
 lev_num = -1
-while True:
-    userinput = input("Load level #? ")
-    try:
-        lev_num = int(userinput)
-        infile = infiletemplate.format(lev_num)
-        print("Loading:",infile)
-    except:
-        print("That's not a number!")
-        continue
-    try:
-        f = open(infile,'r')
-        filedata = f.read()
-        f.close()
-        print(infile, "successfully read from disc")
-        break
-    except:
-        print("loading",infile,"didn't work")
-        continue
+
+global num_options
+
 
 def get_tag(s, tag):
     strtstr = '<{}>'.format(tag)
@@ -43,49 +45,66 @@ def get_tag(s, tag):
     endpos = s.find(endstr)
     tagdata = s[strtpos:endpos]
     return tagdata
-coords_raw = get_tag(filedata,'corners').split('<C>')[1:]
-coords = []
-coordserial = [] #only for file loading
-voxelcount = 0
-for raw_str in coords_raw:
-    newcoord = {}
-    for x in ('x','y','count'): newcoord[x] = int(get_tag(raw_str, x))
-    count = newcoord['count'] # recalc on save, no need to keep updated
-    newcoord['vox'] = []
-    coordserial += [newcoord]*count
-    coords.append(newcoord)
-    voxelcount += count
-del coords_raw
-voxels_raw = get_tag(filedata,'voxels').split('<V>')[1:]
-voxels = []
-voxelsin = 0
-heightmap = {}
-for raw_str in voxels_raw:
-    newcoord = {}
-    for x in ('t','h'): newcoord[x] = int(get_tag(raw_str, x))
-    newcoord['coord'] = coordserial[voxelsin]
-    coordserial[voxelsin]['vox'].append(newcoord)
-    h = newcoord['h']
-    if h in heightmap.keys(): heightmap[h].append(newcoord)
-    else: heightmap[h] = [newcoord]
-    voxelsin += 1
-    voxels.append(newcoord)
-del voxels_raw
-if len(coordserial) != voxelcount: print('len(coordserial) != voxelcount')
-if len(voxels) != voxelsin: print('len(voxels) != voxelsin')
-if voxelcount != voxelsin: print('voxelcount != voxelsin')
-if len(coordserial) == voxelcount == len(voxels) == voxelsin: print(voxelsin,'voxels')
-del coordserial
-del voxelcount
-del voxelsin
-print("Import complete!\nCall save() to save the file")
-print("Call levelcolor() to recolor all at the specified height")
-print("Call randcolor() to recolor all blocks with a random value")
-print("Call buildoffset() to add voxels on top of or beneath a layer")
-print("Call killrand() to remove voxels randomly")
-print("Call hkill() to remove a whole layer")
-print("Call hcull() to remove all coordinates represented in a layer")
-print("Call filllayer() to place blocks at most coordinates on the map")
+
+def load_level(userinput):
+    while True:
+        #userinput = input("Load level #? ")
+        try:
+            lev_num = userinput
+            
+            infile = infiletemplate.format(lev_num)
+            print("Loading:",infile)
+        except:
+            print("That's not a number!")
+            continue
+        try:
+            f = open(infile,'r')
+            filedata = f.read()
+            f.close()
+            print("Level loaded = " + str())
+            print(infile, "successfully read from disc")
+            break
+        except:
+            print("Loading ",infile," didn't work. Are you sure it exists?")
+            print("Maybe you're not using the correct save directory?")
+            continue
+    
+    coords_raw = get_tag(filedata,'corners').split('<C>')[1:]
+    coords = []
+    coordserial = [] #only for file loading
+    voxelcount = 0
+    for raw_str in coords_raw:
+        newcoord = {}
+        for x in ('x','y','count'): newcoord[x] = int(get_tag(raw_str, x))
+        count = newcoord['count'] # recalc on save, no need to keep updated
+        newcoord['vox'] = []
+        coordserial += [newcoord]*count
+        coords.append(newcoord)
+        voxelcount += count
+    del coords_raw
+    voxels_raw = get_tag(filedata,'voxels').split('<V>')[1:]
+    voxels = []
+    voxelsin = 0
+    heightmap = {}
+    for raw_str in voxels_raw:
+        newcoord = {}
+        for x in ('t','h'): newcoord[x] = int(get_tag(raw_str, x))
+        newcoord['coord'] = coordserial[voxelsin]
+        coordserial[voxelsin]['vox'].append(newcoord)
+        h = newcoord['h']
+        if h in heightmap.keys(): heightmap[h].append(newcoord)
+        else: heightmap[h] = [newcoord]
+        voxelsin += 1
+        voxels.append(newcoord)
+    del voxels_raw
+    if len(coordserial) != voxelcount: print('len(coordserial) != voxelcount')
+    if len(voxels) != voxelsin: print('len(voxels) != voxelsin')
+    if voxelcount != voxelsin: print('voxelcount != voxelsin')
+    if len(coordserial) == voxelcount == len(voxels) == voxelsin: print(voxelsin,'voxels')
+    del coordserial
+    del voxelcount
+    del voxelsin
+
 
 def save(level_number = -1):
     global lev_num
@@ -131,13 +150,13 @@ def save(level_number = -1):
         f = open(outfile,'w')
         f.write(filedata)
         f.close()
-        print(outfile, "successfully saved to disc")
+        print(outfile, " successfully saved to disk")
     except:
-        print("saving",outfile,"didn't work")
+        print("Saving ",outfile," didn't work")
         return False
     return True
 
-from random import choice
+
 def levelcolor(height, color = -1):
     global heightmap
     if color == -1: color = choice(ALLCOLORS)
@@ -148,7 +167,6 @@ def levelcolor(height, color = -1):
         vox['t'] = thiscolor
     return True
 
-from random import random
 def randcolor(colors = ALLCOLORS, frac = 1):
     global voxels
     for vox in voxels:
@@ -282,3 +300,102 @@ def filllayer(height = 0, color = -1):
                 nv['coord'] = cn
                 voxels.append(nv)
                 heightmap[height].append(nv)
+
+def yesorno(question):
+    while True:
+        print(question + " [y/n]")
+        choice = input().lower()
+        if choice == 'y':
+           return True
+        elif choice == 'n':
+           return False
+        else:
+           print("Please respond with 'y' or 'n'")
+           
+def inputNumber(message, min = 0, max = None):
+  while True:
+    try:
+       userInput = int(input(message))
+       if isinstance(max, int): # if a max value is passed this will check if its an int, assumes minimum is 0
+           if not (userInput >= 0 and userInput <= max):
+                print("Between" +str(min) + " and " + str(max))
+                continue
+    except ValueError:
+       print("Please enter a whole number. ")
+       continue
+    else:
+       return userInput 
+       break
+    
+num_options = 9 # this is the max number that can be selected in the menu, please update if necessary
+def print_menu():
+    
+    print("####Menu### Loaded level: " + str(lev_num))
+    print("1. Load a level")
+    print("2. Save changes")
+    print("3. Fill layer ")
+    print("4. Recolour layer")
+    print("5. Random color")
+    print("6. Build Offset")
+    print("7. Remove random")
+    print("8. Remove layer")
+    print("9. Remove all coordinates represented in a layer")
+    print("0. Exit")
+
+def is_level_loaded():
+    if lev_num >= 0:
+        return true
+    else:
+        return false
+          
+def menu():
+    print_menu()
+    menu_choice = inputNumber("", 1, num_options)
+    if menu_choice == 0:
+        #exit
+        quit()
+    elif menu_choice == 1:
+        #load a level
+        print("Starting level load")
+        lev_num = inputNumber("Input a save number: ")        
+        load_level(lev_num)
+    elif menu_choice == 2:
+        # save
+        if is_level_loaded():
+            save(lev_num)
+    elif menu_choice == 3:
+        # fill layer
+        print()
+    elif menu_choice == 4:
+        # change layer colour
+        print()
+    elif menu_choice == 5:
+        # random colour
+        print()
+    elif menu_choice == 6:
+        # build offset
+        print()
+    elif menu_choice == 7:
+        # remove random
+        print()
+    elif menu_choice == 8:
+        # remove layer
+        print()
+    elif menu_choice == 9:
+        # remove coords ?
+        print()
+    
+
+# beginning 
+save_dir = os.getenv("LOCALAPPDATA") + "Low\Oskar Stalberg\Townscaper" # this should be correct for most people 
+correct_save_dir=yesorno("Is " + save_dir + " your save directory?")
+
+while not correct_save_dir:
+    save_dir = input("Please enter your save directory (i.e E:\...\Oskar Stalberg\Townscaper): ")
+    correct_save_dir=yesorno("Is " + save_dir + " your save directory?")
+
+os.chdir(save_dir) # sets working directory
+print("Now working in save dir")
+while True: # a bit uneasy about this but main() has an exit so, oh well ?
+    menu()
+
